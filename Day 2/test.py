@@ -1,5 +1,5 @@
 import unittest
-from part_1 import getInput, calculateIntcodes
+from part_1_and_2 import getInput, calculateIntcodes
 
 
 class TestIntcode(unittest.TestCase):
