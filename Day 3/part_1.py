@@ -37,7 +37,10 @@ class Rect:
             return Point(self.p1.x, other.p1.y)
 
     def __str__(self):
-        return 'Rect({p_1},{p_0})'.format(p_1=self.p1, p_0=self.p0)
+        return 'Rect(p1={p_1},p0={p_0})'.format(p_1=self.p1, p_0=self.p0)
+
+    def __sub__(self, other):
+        return Rect(Point(self.p1.x-other.p1.x, self.p1.y-other.p1.y), Point(self.p0.x-other.p0.x, self.p0.y-other.p0.y))
 
 
 class Point:
@@ -65,35 +68,49 @@ def calculate_closest_intersection_distance(wires):
     slicer = 1
     for path in paths:
         for other_path in paths[slicer:]:
-            intersections.append(get_intersections(path, other_path))
+            intersections.append(calculate_distance_manhattan(inter)
+                                 for inter in get_intersections(path, other_path))
             slicer += 1
-    print(intersections)
-# toque a 3,3 i 6,5
+    return min(intersections[0])
 
 
+def get_all_intersections(wires):
+    paths = tuple(calculate_path_as_vectors(wire) for wire in wires)
+    intersections = list()
+    slicer = 1
+    for path in paths:
+        for other_path in paths[slicer:]:
+            intersections.append(get_optimal_intersection(path, other_path))
+            slicer += 1
+    return intersections[0]
+
+
+# No conto els solapats
 def get_intersection_point(rect, other_rect):
     if rect.is_vertical() and rect.is_in_vertical(other_rect):
         if other_rect.is_vertical():
-            print("pls god no")
             return None
         elif other_rect.is_horizontal():
             return rect.calculate_intersection_v_h(other_rect)
         else:
             return None
     elif rect.is_horizontal() and rect.is_in_horizontal(other_rect):
-        if rect.p1.x == 3 and rect.p0.x == 3 or rect.p0.x == 8 and rect.p1.x == 3:
-            print("e")
         if other_rect.is_vertical():
             return rect.calculate_intersection_h_v(other_rect)
         elif other_rect.is_horizontal():
             return None
-            print("nope")
         else:
             return None
     else:
         return None
+
+
 def calculate_distance_manhattan(point):
     return abs(point.x - STARTING_POINT.x) + abs(point.y - STARTING_POINT.y)
+
+
+def calculate_manhattan(point_1, point_0):
+    return abs(point_1.x - point_0.x) + abs(point_1.y - point_0.y)
 
 
 def get_intersections(path, other_path):
@@ -107,16 +124,46 @@ def get_intersections(path, other_path):
             other_rect = Rect(other_first_point, other_last_point)
             intersection = get_intersection_point(rect, other_rect)
             if intersection != None:
-                print(intersection)
-                print(rect, other_rect)
-                distance.append(calculate_distance_manhattan(intersection))
+                distance.append(intersection)
             other_first_point = other_last_point
     return distance
 
 
+def get_optimal_intersection(path, other_path):
+    distance = list()
+    first_point = path[0]
+    total_steps = list()
+    path_steps = 0
+    other_path_steps = 0
+    for last_point in path[1:]:
+        rect = Rect(first_point, last_point)
+        other_first_point = other_path[0]
+        path_steps = path_steps + calculate_manhattan(last_point, first_point)
+        for other_last_point in other_path[1:]:
+            other_rect = Rect(other_first_point, other_last_point)
+            intersection = get_intersection_point(rect, other_rect)
+            other_path_steps += calculate_manhattan(
+                other_last_point, other_first_point)
+            if intersection != None:
+                #
+                #
+                #
+                diff_steps = abs(intersection.x - rect.p1.x) + abs(intersection.y - rect.p1.y)
+                diff_other_steps = abs(intersection.x - other_rect.p1.x) + abs(intersection.y - other_rect.p1.y)
+                distance.append(intersection)
+                total_steps.append(path_steps - diff_steps + other_path_steps - diff_other_steps)
+                #
+                #
+                #
+                #
+            other_first_point = other_last_point
+        other_path_steps = 0
+        first_point = last_point
+    return total_steps
+
+
 def calculate_path_as_vectors(wire):
     splitted = wire.split(',')
-    print(len(splitted))
     path = list()
     path.append(STARTING_POINT)
     last_point = STARTING_POINT
@@ -138,4 +185,6 @@ def get_rect(mov, last_point):
 if __name__ == '__main__':
     wires = get_input()
     #wires = ('R8,U5,L5,D3', 'U7,R6,D4,L4')
-    calculate_closest_intersection_distance(wires)
+    distance = calculate_closest_intersection_distance(wires)
+    all_intersections = get_all_intersections(wires)
+    print(min(all_intersections))
